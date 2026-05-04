@@ -47,11 +47,11 @@ SECUENCIA = [1, 8, 1, 4, 5, 3, 4, 3, 1, 9, 1, 3, 1, 10]
 # Parámetros del Algoritmo Genético Tradicional
 # ──────────────────────────────────────────────
 GA_PARAMS = {
-    "poblacion":     100,
-    "generaciones":  200,
-    "prob_cruce":    0.85,
-    "prob_mutacion": 0.15,
-    "torneo_k":      3,
+    "poblacion":     100,  #Numero de individuos en cada generación
+    "generaciones":  200,  #Número de generaciones a ejecutar
+    "prob_cruce":    0.85, #Probabilidad de cruzar dos individuos para crear descendencia
+    "prob_mutacion": 0.15, #Probabilidad de mutar un individuo (cambiar su configuración)
+    "torneo_k":      3,    #Número de individuos seleccionados en cada torneo para elegir al mejor (selección por torneo) 
 }
 
 # ──────────────────────────────────────────────
@@ -59,15 +59,39 @@ GA_PARAMS = {
 # ──────────────────────────────────────────────
 CGA_PARAMS = {
     "N":           200,   # tamaño de población virtual
-    "iteraciones": 1000,
+    "iteraciones": 1000, # número de iteraciones a ejecutar
 }
 
 # ──────────────────────────────────────────────
 # Parámetros de la Estrategia Evolutiva (μ + λ)
 # ──────────────────────────────────────────────
 ES_PARAMS = {
-    "mu":            10,
-    "lambda_":       50,
-    "sigma_inicial": 1.0,
-    "generaciones":  300,
+    "mu":            10,  # número de padres seleccionados para reproducirse en cada generación
+    "lambda_":       50,  # número de descendientes generados por los padres en cada generación
+    "sigma_inicial": 1.0, # desviación estándar inicial para la mutación gaussiana (controla la magnitud de los cambios en los descendientes)
+    "generaciones":  300, # número de generaciones a ejecutar
+}
+
+# ──────────────────────────────────────────────
+# Parámetros de PSO (Particle Swarm Optimization)
+# ──────────────────────────────────────────────
+PSO_PARAMS = {
+    "particulas":     30, # número de partículas en el swarm
+    "iteraciones":   300, # número de iteraciones a ejecutar
+    "inercia":       0.7, # factor de inercia
+    "coef_personal": 1.5, # coeficiente personal
+    "coef_social":   1.5, # coeficiente social
+}
+
+# ──────────────────────────────────────────────
+# Parámetros de ACO (Ant Colony Optimization)
+# ──────────────────────────────────────────────
+ACO_PARAMS = {
+    "hormigas":    20,     # número de hormigas en cada iteración
+    "iteraciones": 300,    # número de iteraciones a ejecutar 
+    "alpha":       2.0,   # peso de feromona
+    "beta":        1.0,   # peso de heurística (uniforme)
+    "rho":         0.1,   # tasa de evaporación
+    "Q":          10.0,   # constante de depósito
+    "tau_inicial": 1.0,   # feromona inicial uniforme
 }

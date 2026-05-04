@@ -10,6 +10,8 @@ from layout import Layout
 from algoritmos.genetico      import ejecutar_ga
 from algoritmos.compacto      import ejecutar_cga
 from algoritmos.estrategia_ev import ejecutar_es
+from algoritmos.pso           import ejecutar_pso
+from algoritmos.aco           import ejecutar_aco
 from visualizacion.animacion_2d import generar_animacion_2d
 from config import NOMBRES
 
@@ -34,6 +36,8 @@ def main():
         ("GA",     ejecutar_ga),
         ("cGA",    ejecutar_cga),
         ("ES",     ejecutar_es),
+        ("PSO",    ejecutar_pso),
+        ("ACO",    ejecutar_aco),
     ]
 
     tabla = []

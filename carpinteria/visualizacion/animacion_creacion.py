@@ -510,6 +510,286 @@ def generar_animacion_es(nombre_archivo: str, seed: int = 42):
     print(f"  [OK] {nombre_archivo}")
 
 
+# ─── PSO ─────────────────────────────────────────────────────────────────────
+
+def generar_animacion_pso(nombre_archivo: str, seed: int = 42):
+    """
+    Muestra cómo una partícula PSO se mueve hacia gbest mediante swaps.
+
+    Parámetros:
+        nombre_archivo: ruta del HTML de salida
+        seed:           semilla para reproducibilidad
+    """
+    random.seed(seed)
+    n_maq = len(MAQUINAS)
+
+    # Crear partícula inicial y gbest distintos
+    particula = random.sample(CELDAS_DISP, n_maq)
+    gbest = random.sample(CELDAS_DISP, n_maq)
+    while gbest == particula:
+        gbest = random.sample(CELDAS_DISP, n_maq)
+
+    # Calcular secuencia de swaps para acercar partícula a gbest (máx 5 pasos)
+    swaps = []
+    pos_actual = list(particula)
+    for _ in range(min(5, n_maq)):
+        diff = [i for i in range(n_maq) if pos_actual[i] != gbest[i]]
+        if not diff:
+            break
+        i = diff[0]
+        j = pos_actual.index(gbest[i])
+        swaps.append((i, j, pos_actual[i], pos_actual[j], gbest[i]))
+        pos_actual[i], pos_actual[j] = pos_actual[j], pos_actual[i]
+
+    shapes = _shapes_fijos()
+    annots_base = _annots_fijos()
+
+    def panel_estado(pos, gbest_pos, swap_idx=None):
+        lines = ["<b>Partícula → gbest</b>"]
+        for k in range(n_maq):
+            mid = MAQUINAS[k]
+            marca = "✓" if pos[k] == gbest_pos[k] else "≠"
+            color = "🟢" if pos[k] == gbest_pos[k] else "🔴"
+            if swap_idx is not None and k in swap_idx:
+                color = "🔄"
+            lines.append(
+                f"  M{mid}: ({pos[k][0]},{pos[k][1]}) {marca} "
+                f"({gbest_pos[k][0]},{gbest_pos[k][1]}) {color}"
+            )
+        return dict(
+            x=4.55, y=4.1, xref="x", yref="y",
+            text="<br>".join(lines),
+            showarrow=False, align="left",
+            font=dict(size=9, family="Courier New, monospace"),
+            bgcolor="rgba(255,255,255,0.93)",
+            bordercolor="#4472C4", borderwidth=1, borderpad=5,
+        )
+
+    def asig_de(pos):
+        return dict(zip(MAQUINAS, pos))
+
+    frames = []
+
+    def push(name, titulo, pos, actual_cel=None, actual_id=None, swap_idx=None):
+        frames.append(go.Frame(
+            data=_grid_traces(asignadas=asig_de(pos),
+                              actual_celda=actual_cel, actual_id=actual_id),
+            layout=go.Layout(title_text=titulo,
+                             annotations=annots_base + [panel_estado(pos, gbest, swap_idx)]),
+            name=name,
+        ))
+
+    push("step_0",
+         "PSO — Partícula inicial<br>"
+         "<sub>Paso 0 — Se crea una partícula aleatoria (random.sample). "
+         "El panel derecho compara su posición con el gbest (mejor global conocido).</sub>",
+         list(particula))
+
+    pos = list(particula)
+    for s_i, (i, j, cel_i, cel_j, cel_obj) in enumerate(swaps):
+        mid_i = MAQUINAS[i]
+        mid_j = MAQUINAS[j]
+        pos[i], pos[j] = pos[j], pos[i]
+        push(f"step_{s_i+1}",
+             f"PSO — Movimiento hacia gbest (swap {s_i+1}/{len(swaps)})<br>"
+             f"<sub>M{mid_i} necesita celda ({cel_obj[0]},{cel_obj[1]}). "
+             f"Se intercambia con M{mid_j}. "
+             f"Influencia social: la partícula copia el gbest posición a posición.</sub>",
+             list(pos), cel_obj, mid_i, {i, j})
+
+    push("step_final",
+         "PSO — Partícula actualizada<br>"
+         "<sub>La partícula se acercó al gbest aplicando swaps (velocidad discreta). "
+         "En el siguiente ciclo también se aplica la influencia del pbest (mejor personal) "
+         "y la inercia (swap aleatorio con prob. w).</sub>",
+         list(pos))
+
+    fig = go.Figure(data=frames[0].data)
+    fig.update_layout(
+        title=dict(text=frames[0].layout.title.text, font=dict(size=14, color="#222")),
+        xaxis=dict(title="Columna", range=[0.5, 5.15], dtick=1,
+                   showgrid=True, gridcolor='rgba(0,0,0,0.1)', zeroline=False),
+        yaxis=dict(title="Fila", range=[0.5, 4.65], dtick=1,
+                   showgrid=True, gridcolor='rgba(0,0,0,0.1)', zeroline=False,
+                   scaleanchor="x", scaleratio=1),
+        shapes=shapes,
+        annotations=annots_base + [panel_estado(list(particula), gbest)],
+        height=680, width=790,
+        plot_bgcolor='rgba(245, 250, 255, 1)', paper_bgcolor='white',
+        font=dict(family='Arial', size=12),
+        margin=dict(l=55, r=60, t=115, b=120),
+        updatemenus=_controls(1300)[0],
+        sliders=_slider(frames),
+        showlegend=False,
+    )
+    fig.frames = frames
+    fig.write_html(nombre_archivo, config=dict(responsive=True, displaylogo=False))
+    print(f"  [OK] {nombre_archivo}")
+
+
+# ─── ACO ─────────────────────────────────────────────────────────────────────
+
+def generar_animacion_aco(nombre_archivo: str, seed: int = 42):
+    """
+    Muestra cómo una hormiga ACO construye su solución guiada por feromonas.
+
+    Parámetros:
+        nombre_archivo: ruta del HTML de salida
+        seed:           semilla para reproducibilidad
+    """
+    random.seed(seed)
+    n_maq = len(MAQUINAS)
+    n_cel = len(CELDAS_DISP)
+    tau0 = 1.0
+    alpha = 2.0
+
+    tau = [[tau0] * n_cel for _ in range(n_maq)]
+
+    # Simular construcción de una hormiga
+    disponibles_idx = list(range(n_cel))
+    individuo = []
+    selecciones = []
+
+    for i in range(n_maq):
+        pesos = [tau[i][j] ** alpha for j in disponibles_idx]
+        total = sum(pesos)
+        r, acum = random.random() * total, 0.0
+        elegido = disponibles_idx[-1]
+        for idx, j in enumerate(disponibles_idx):
+            acum += pesos[idx]
+            if acum >= r:
+                elegido = j
+                break
+        individuo.append(CELDAS_DISP[elegido])
+        selecciones.append(elegido)
+        disponibles_idx.remove(elegido)
+
+    cel_labels = [f"({c[0]},{c[1]})" for c in CELDAS_DISP]
+    maq_labels = [f"M{m} {NOMBRES[m][:9]}" for m in MAQUINAS]
+
+    def make_heatmap(fila_activa=None):
+        z = [list(row) for row in tau]
+        if fila_activa is not None:
+            for i in range(fila_activa):
+                z[i][selecciones[i]] = tau0 * 1.15
+        return go.Heatmap(
+            z=z,
+            x=cel_labels, y=maq_labels,
+            text=[[f"{v:.2f}" for v in row] for row in z],
+            texttemplate="%{text}",
+            colorscale=[[0, "#f5f8ff"], [0.45, "#93C6E8"], [1, "#1A4F8A"]],
+            zmin=0, zmax=tau0 * 1.2,
+            showscale=True,
+            colorbar=dict(x=0.51, y=0.5, len=0.75, thickness=12,
+                          title=dict(text="τ", side="right"),
+                          tickfont=dict(size=9)),
+            hoverinfo='skip', xgap=2, ygap=2,
+        )
+
+    def hm_annots(fila_activa, cel_elegida_idx):
+        annots = []
+        if fila_activa is None:
+            return annots
+        y_label = maq_labels[fila_activa]
+        annots.append(dict(
+            x=0.51, y=y_label, xref="paper", yref="y",
+            text="◀ selección aquí",
+            showarrow=False,
+            font=dict(size=10, color="darkorange", family="Arial Black"),
+            xanchor="right",
+            bgcolor="rgba(255,230,150,0.85)",
+            bordercolor="orange", borderpad=3, borderwidth=1,
+        ))
+        if cel_elegida_idx is not None:
+            annots.append(dict(
+                x=cel_labels[cel_elegida_idx], y=y_label,
+                xref="x", yref="y",
+                text="★",
+                showarrow=False,
+                font=dict(size=18, color="#CC0000"),
+            ))
+        return annots
+
+    fig = make_subplots(
+        rows=1, cols=2,
+        column_widths=[0.56, 0.44],
+        subplot_titles=[
+            "Matriz de Feromonas τ [7 máquinas × 10 celdas]",
+            "Grilla (Vista Superior)",
+        ],
+        horizontal_spacing=0.10,
+    )
+
+    fig.add_trace(make_heatmap(), row=1, col=1)
+    for t in _grid_traces():
+        fig.add_trace(t, row=1, col=2)
+
+    shapes_grid = _shapes_fijos(xref="x2", yref="y2")
+    annots_grid = _annots_fijos(xref="x2", yref="y2")
+
+    frames = []
+
+    def push(name, titulo, fila_act, cel_idx, asig_prev, actual_cel, actual_id):
+        frames.append(go.Frame(
+            data=[make_heatmap(fila_act)]
+                 + _grid_traces(asignadas=asig_prev,
+                                actual_celda=actual_cel, actual_id=actual_id),
+            traces=[0, 1, 2, 3],
+            layout=go.Layout(title_text=titulo,
+                             annotations=annots_grid + hm_annots(fila_act, cel_idx)),
+            name=name,
+        ))
+
+    push("step_0",
+         "ACO — Construcción de solución por una hormiga<br>"
+         "<sub>Paso 0/7 — Feromonas iniciales τ uniformes: τ[i][j] = 1.0 para todas las celdas. "
+         "P(elegir celda j) ∝ τ[i][j]^α (con α=2, distribución uniforme al inicio).</sub>",
+         None, None, {}, None, None)
+
+    asig = {}
+    for i, mid in enumerate(MAQUINAS):
+        cel_idx = selecciones[i]
+        celda = individuo[i]
+        prev = dict(asig)
+        asig[mid] = celda
+        push(f"step_{i+1}",
+             f"ACO — Construcción de solución<br>"
+             f"<sub>Paso {i+1}/7 — M{mid} ({NOMBRES[mid]}): "
+             f"ruleta ponderada por τ^{alpha:.0f} sobre {n_cel - i} celdas disponibles → "
+             f"celda ({celda[0]},{celda[1]}) (★ rojo). "
+             f"La celda queda bloqueada para las siguientes máquinas.</sub>",
+             i, cel_idx, prev, celda, mid)
+
+    push("step_final",
+         "ACO — Solución completa de la hormiga<br>"
+         "<sub>Al terminar la iteración: las mejores hormigas depositan feromona "
+         "(τ[i][j] += Q/costo). Después la evaporación reduce todas las τ. "
+         "Con el tiempo, las mejores celdas acumulan más feromona y guían al enjambre.</sub>",
+         None, None, dict(zip(MAQUINAS, individuo)), None, None)
+
+    fig.frames = frames
+    fig.update_layout(
+        title=dict(text=frames[0].layout.title.text, font=dict(size=14)),
+        shapes=shapes_grid,
+        annotations=annots_grid,
+        height=640, width=1160,
+        plot_bgcolor='rgba(245, 250, 255, 1)', paper_bgcolor='white',
+        font=dict(family='Arial', size=11),
+        margin=dict(l=55, r=55, t=115, b=130),
+        xaxis=dict(title="Celda disponible", tickangle=-45, tickfont=dict(size=9)),
+        yaxis=dict(title="Máquina", tickfont=dict(size=9.5)),
+        xaxis2=dict(title="Columna", range=[0.5, 4.5], dtick=1,
+                    showgrid=True, gridcolor='rgba(0,0,0,0.1)', zeroline=False),
+        yaxis2=dict(title="Fila", range=[0.5, 4.5], dtick=1,
+                    showgrid=True, gridcolor='rgba(0,0,0,0.1)', zeroline=False),
+        updatemenus=_controls(1400)[0],
+        sliders=_slider(frames),
+        showlegend=False,
+    )
+    fig.write_html(nombre_archivo, config=dict(responsive=True, displaylogo=False))
+    print(f"  [OK] {nombre_archivo}")
+
+
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -520,4 +800,6 @@ if __name__ == "__main__":
     generar_animacion_ga(os.path.join(out_dir, "creacion_ga.html"))
     generar_animacion_cga(os.path.join(out_dir, "creacion_cga.html"))
     generar_animacion_es(os.path.join(out_dir, "creacion_es.html"))
+    generar_animacion_pso(os.path.join(out_dir, "creacion_pso.html"))
+    generar_animacion_aco(os.path.join(out_dir, "creacion_aco.html"))
     print("\n¡Listo! Archivos en resultados/")

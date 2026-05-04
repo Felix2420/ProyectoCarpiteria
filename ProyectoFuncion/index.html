@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimización Multimodal — Algoritmos Evolutivos y de Enjambre</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+  MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',sans-serif; background:#1a1a2e; color:#e0e0e0; padding:20px; }
+.contenedor { max-width:1400px; margin:0 auto; }
+h1 { color:#e94560; text-align:center; margin-bottom:10px; font-size:2em; padding-bottom:10px; border-bottom:2px solid #e94560; }
+h2 { color:#e0e0e0; background:#16213e; padding:10px 20px; border-left:4px solid #e94560; margin:30px 0 15px; font-size:1.3em; }
+.intro { background:#16213e; padding:20px; border-radius:8px; margin-bottom:20px; line-height:1.7; }
+.formula-caja { background:#0f3460; padding:15px; border-radius:6px; margin:12px 0; text-align:center; font-size:1.05em; border:1px solid #e94560; }
+.panel-principal { display:grid; grid-template-columns:2fr 1fr; gap:20px; margin:20px 0; }
+.panel-grafica { background:#16213e; border-radius:8px; padding:15px; }
+#grafica-3d { width:100%; height:520px; border-radius:6px; }
+.controles-rango { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+.panel-control { background:#16213e; border-radius:8px; padding:15px; }
+.cg { margin-bottom:14px; }
+.cg label { display:block; color:#a0aec0; margin-bottom:4px; font-size:0.88em; }
+.cg input[type="range"] { width:100%; accent-color:#e94560; }
+.val { color:#e94560; font-weight:bold; }
+.btn { width:100%; padding:10px; margin-bottom:8px; border:none; border-radius:6px; cursor:pointer;
+       font-size:0.92em; font-weight:bold; transition:all 0.2s; }
+.btn:hover { opacity:0.85; transform:translateY(-1px); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+.btn-ga      { background:#e94560; color:#fff; }
+.btn-cga     { background:#2196F3; color:#fff; }
+.btn-es      { background:#4CAF50; color:#fff; }
+.btn-abc     { background:#FF9800; color:#111; }
+.btn-aco     { background:#9C27B0; color:#fff; }
+.btn-clear   { background:#444;    color:#fff; }
+.btn-animar  { background:#FF5722; color:#fff; font-size:0.88em; padding:8px; }
+.panel-animacion { background:#0f3460; padding:12px; border-radius:6px; margin-top:10px; }
+.barra-progreso { width:100%; height:8px; background:#333; border-radius:4px; overflow:hidden; margin-bottom:6px; }
+.progreso-fill { height:100%; background:linear-gradient(90deg,#e94560,#FF9800); width:0%; transition:width 0.1s; }
+.info-animacion { font-size:0.85em; color:#a0aec0; text-align:center; margin-bottom:8px; }
+.teoria-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; margin:15px 0; }
+.tcard { background:#16213e; padding:15px; border-radius:8px; border-top:3px solid #e94560; line-height:1.6; }
+.tcard h4 { color:#e94560; margin-bottom:8px; }
+table { width:100%; border-collapse:collapse; }
+th { background:#0f3460; padding:10px 14px; text-align:left; color:#e94560; font-size:0.9em; }
+td { padding:10px 14px; border-bottom:1px solid #0f3460; font-size:0.9em; }
+tr:hover td { background:#0f3460; }
+.badge { display:inline-block; padding:2px 9px; border-radius:10px; font-size:0.82em; font-weight:bold; }
+.badge-ga      { background:#e94560; }
+.badge-cga     { background:#2196F3; }
+.badge-es      { background:#4CAF50; }
+.badge-abc     { background:#FF9800; color:#111; }
+.badge-aco     { background:#9C27B0; }
+.conclusiones { background:#16213e; padding:22px; border-radius:8px; margin-top:30px; border-left:5px solid #4CAF50; line-height:1.75; }
+.conclusiones h3 { color:#4CAF50; margin-bottom:12px; }
+hr.sep { border:none; border-top:1px solid #0f3460; margin:14px 0; }
+/* Estilos para MathJax */
+mjx-container { display:inline-block; margin:0 2px; }
+mjx-container svg { margin:0; }
+.formula-caja mjx-container { font-size:1.2em; }
+@media(max-width:900px){.panel-principal{grid-template-columns:1fr}.teoria-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="contenedor">
+
+<h1>Optimización Multimodal con Algoritmos Evolutivos y de Enjambre</h1>
+
+<!-- INTRODUCCIÓN -->
+<div class="intro">
+  <strong style="color:#e94560; font-size:1.05em;">¿Qué es una función multimodal?</strong>
+  <p style="margin-top:8px;">Una función multimodal tiene <strong>múltiples máximos y mínimos locales</strong>. Los métodos de gradiente quedan atrapados en el primer óptimo que encuentran. Los algoritmos evolutivos y de enjambre mantienen una <em>población de soluciones</em> que explora el espacio en paralelo, escapando de óptimos locales.</p>
+  <div class="formula-caja">
+    $$f(x,y) = \sin(x^2 + y^2)\cdot\cos(x\cdot y) + \frac{x^2+y^2}{10}$$
+    <p style="margin-top:6px; font-size:0.88em; color:#a0aec0;">Dominio: $x,y \in [-5,5]$ &nbsp;·&nbsp; Objetivo: <strong>maximizar</strong> $f(x,y)$</p>
+  </div>
+</div>
+
+<!-- TEORÍA -->
+<h2>1. Conceptos de Cálculo Multivariable</h2>
+<div class="teoria-grid">
+  <div class="tcard">
+    <h4>Máximo Local 🏔️</h4>
+    <p>Punto donde $f(x_0,y_0) \geq f(x,y)$ en una vecindad. Geométricamente es la <strong>cima de una montaña</strong>: moverse en cualquier dirección lleva hacia abajo.</p>
+  </div>
+  <div class="tcard">
+    <h4>Mínimo Local 🏞️</h4>
+    <p>Punto donde $f(x_0,y_0) \leq f(x,y)$ en una vecindad. Es el <strong>fondo de un valle</strong>: moverse en cualquier dirección lleva hacia arriba.</p>
+  </div>
+  <div class="tcard">
+    <h4>Punto de Silla 🐴</h4>
+    <p>Punto crítico que no es ni máximo ni mínimo. En una dirección sube y en otra baja: tiene forma de <strong>silla de montar</strong>.</p>
+  </div>
+</div>
+<div class="intro" style="margin-top:0;">
+  <strong style="color:#e94560;">Esquema analítico (idea general)</strong>
+  <ol style="margin-left:20px; margin-top:8px; line-height:2;">
+    <li>Calcular $\partial f/\partial x$ y $\partial f/\partial y$</li>
+    <li>Resolver $\nabla f = 0$ para obtener puntos críticos</li>
+    <li>Calcular $D = f_{xx}f_{yy} - (f_{xy})^2$</li>
+    <li>Si $D>0$ y $f_{xx}<0$: máximo. Si $D>0$ y $f_{xx}>0$: mínimo. Si $D<0$: silla.</li>
+  </ol>
+  <p style="margin-top:8px; color:#a0aec0; font-size:0.88em;">⚠️ Para nuestra función el análisis analítico completo es muy complejo por su naturaleza oscilatoria — los algoritmos numéricos son la herramienta más práctica.</p>
+</div>
+
+<!-- VISUALIZACIÓN + PANEL -->
+<h2>2. Visualización 3D y Panel de Algoritmos</h2>
+<div class="panel-principal">
+
+  <!-- Gráfica -->
+  <div class="panel-grafica">
+    <div id="grafica-3d"></div>
+    <div class="controles-rango">
+      <div class="cg">
+        <label>X mín: <span class="val" id="v-xmin">-5</span></label>
+        <input type="range" id="xmin" min="-10" max="0" step="0.5" value="-5" oninput="actualizarRango()">
+      </div>
+      <div class="cg">
+        <label>X máx: <span class="val" id="v-xmax">5</span></label>
+        <input type="range" id="xmax" min="0" max="10" step="0.5" value="5" oninput="actualizarRango()">
+      </div>
+      <div class="cg">
+        <label>Y mín: <span class="val" id="v-ymin">-5</span></label>
+        <input type="range" id="ymin" min="-10" max="0" step="0.5" value="-5" oninput="actualizarRango()">
+      </div>
+      <div class="cg">
+        <label>Y máx: <span class="val" id="v-ymax">5</span></label>
+        <input type="range" id="ymax" min="0" max="10" step="0.5" value="5" oninput="actualizarRango()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de control -->
+  <div class="panel-control">
+    <strong style="color:#e94560; font-size:1.05em;">Parámetros</strong>
+    <div class="cg" style="margin-top:12px;">
+      <label>Iteraciones: <span class="val" id="v-iter">150</span></label>
+      <input type="range" id="iteraciones" min="50" max="500" step="10" value="150"
+             oninput="document.getElementById('v-iter').textContent=this.value">
+    </div>
+    <div class="cg">
+      <label>Población: <span class="val" id="v-pop">30</span></label>
+      <input type="range" id="poblacion" min="10" max="100" step="5" value="30"
+             oninput="document.getElementById('v-pop').textContent=this.value">
+    </div>
+
+    <hr class="sep">
+    <strong style="color:#e94560; font-size:1.05em;">Ejecutar Algoritmos</strong>
+    <div style="margin-top:10px;">
+      <button class="btn btn-ga"    onclick="lanzarCon('GA')">🧬 GA Clásico</button>
+      <button class="btn btn-cga"   onclick="lanzarCon('cGA')">🔵 cGA Compacto</button>
+      <button class="btn btn-es"    onclick="lanzarCon('ES')">🌿 Estrategias Evolutivas</button>
+      <button class="btn btn-abc"   onclick="lanzarCon('ABC')">🐝 Colmena (ABC)</button>
+      <button class="btn btn-aco"   onclick="lanzarCon('ACO')">🐜 Hormigas (ACO)</button>
+    </div>
+
+    <div class="panel-animacion" id="panel-anim" style="display:none;">
+      <div class="info-animacion">
+        <strong id="info-alg">—</strong> | Iteración: <strong id="iter-act">0</strong>/<strong id="iter-max">0</strong>
+      </div>
+      <div class="barra-progreso"><div class="progreso-fill" id="barra"></div></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <button class="btn btn-animar" id="btn-play" onclick="pausarAnimar()">⏸️ Pausar</button>
+        <button class="btn btn-animar" onclick="resetearAnimar()">🔄 Reiniciar</button>
+      </div>
+      <div style="margin-top:8px;">
+        <label style="color:#a0aec0; font-size:0.82em;">Velocidad:</label>
+        <input type="range" id="vel-anim" min="10" max="500" step="10" value="100" style="width:100%; accent-color:#e94560;">
+      </div>
+    </div>
+
+    <hr class="sep">
+    <button class="btn btn-clear" onclick="limpiar()">🗑️ Limpiar Resultados</button>
+  </div>
+</div>
+
+<!-- RESULTADOS -->
+<h2>3. Resultados Comparativos</h2>
+<div style="background:#16213e; padding:20px; border-radius:8px;">
+  <table>
+    <thead>
+      <tr>
+        <th>Algoritmo</th><th>Mejor f(x,y)</th><th>x*</th><th>y*</th><th>Evaluaciones</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-body">
+      <tr><td colspan="5" style="text-align:center; color:#a0aec0; padding:20px;">
+        Ejecuta algún algoritmo para ver resultados.
+      </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- CONCLUSIONES -->
+<div class="conclusiones">
+  <h3>Conclusiones</h3>
+  <p>Se implementaron <strong>5 familias de algoritmos</strong> sobre $f(x,y)=\sin(x^2+y^2)\cos(xy)+(x^2+y^2)/10$:</p>
+  <ul style="margin-left:20px; margin-top:10px; line-height:2.2;">
+    <li><strong>GA Clásico:</strong> Selección por torneo, cruza aritmética, mutación gaussiana y elitismo. Robusto y versátil.</li>
+    <li><strong>cGA Compacto:</strong> No mantiene población explícita; usa una distribución gaussiana que evoluciona. Eficiente en memoria.</li>
+    <li><strong>Estrategias Evolutivas (μ+λ):</strong> Parámetros de mutación auto-adaptativos. Excelente en paisajes continuos.</li>
+    <li><strong>Colmena ABC:</strong> Abejas empleadas (explotación), seguidoras (selección por calidad) y exploradoras (diversidad). Equilibrio claro.</li>
+    <li><strong>Hormigas ACO-Continuo:</strong> Feromonas sobre cuadrícula discreta guían la búsqueda hacia zonas prometedoras; la evaporación evita estancamiento.</li>
+  </ul>
+  <p style="margin-top:12px;">La <strong>visualización 3D</strong> muestra por qué este paisaje es difícil: los múltiples picos hacen que un método voraz quede atrapado en el primero que encuentra. Mantener <em>diversidad poblacional</em> es la clave del éxito en funciones multimodales.</p>
+</div>
+
+</div><!-- fin contenedor -->
+
+<script>
+// ================================================================
+// ESTADO GLOBAL
+// ================================================================
+const mejores = {};  // { GA: {x,y,valor,evaluaciones}, ... }
+let animacionActual = null;  // { algoritmo, historial, indice, pausado }
+const historialesAlgoritmos = {};  // Guarda el historial de cada algoritmo
+
+const ESTILOS = {
+    GA:  { color:'#e94560', sym:'diamond', nombre:'GA Clásico' },
+    cGA: { color:'#2196F3', sym:'circle',  nombre:'cGA Compacto' },
+    ES:  { color:'#4CAF50', sym:'square',  nombre:'ES (μ+λ)' },
+    ABC: { color:'#FF9800', sym:'cross',   nombre:'Colmena ABC' },
+    ACO: { color:'#9C27B0', sym:'x',       nombre:'Hormigas ACO' },
+};
+
+// ================================================================
+// FUNCIÓN OBJETIVO
+// f(x,y) = sin(x² + y²) · cos(x·y) + (x² + y²) / 10
+// ================================================================
+function f(x, y) {
+    const r2 = x*x + y*y;
+    return Math.sin(r2) * Math.cos(x*y) + r2/10;
+}
+
+// Clamp al dominio
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// Número aleatorio normal N(0,1) — Box-Muller
+function randn() {
+    let u=0, v=0;
+    while(!u) u=Math.random();
+    while(!v) v=Math.random();
+    return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+// ================================================================
+// MALLA 3D Y PLOTLY
+// ================================================================
+function generarMalla(xMin,xMax,yMin,yMax,pasos=40){
+    const xs=[],ys=[],zs=[];
+    const dx=(xMax-xMin)/pasos, dy=(yMax-yMin)/pasos;
+    for(let i=0;i<=pasos;i++){
+        const rx=[],ry=[],rz=[];
+        for(let j=0;j<=pasos;j++){
+            const xi=xMin+i*dx, yj=yMin+j*dy;
+            rx.push(xi); ry.push(yj); rz.push(f(xi,yj));
+        }
+        xs.push(rx); ys.push(ry); zs.push(rz);
+    }
+    return {x:xs,y:ys,z:zs};
+}
+
+function getRango(){
+    return {
+        xMin:parseFloat(document.getElementById('xmin').value),
+        xMax:parseFloat(document.getElementById('xmax').value),
+        yMin:parseFloat(document.getElementById('ymin').value),
+        yMax:parseFloat(document.getElementById('ymax').value),
+    };
+}
+
+function mkLayout(r){
+    return {
+        paper_bgcolor:'#16213e', plot_bgcolor:'#16213e',
+        scene:{
+            bgcolor:'#16213e',
+            xaxis:{title:'x',color:'#e0e0e0',gridcolor:'#333'},
+            yaxis:{title:'y',color:'#e0e0e0',gridcolor:'#333'},
+            zaxis:{title:'f(x,y)',color:'#e0e0e0',gridcolor:'#333'},
+        },
+        margin:{l:0,r:0,t:10,b:0},
+        showlegend:true,
+        legend:{bgcolor:'#0f3460',font:{color:'#e0e0e0',size:11}},
+        height:520,
+    };
+}
+
+// Renderizado completo (superficie + marcadores)
+function renderizar(){
+    const r=getRango();
+    const m=generarMalla(r.xMin,r.xMax,r.yMin,r.yMax);
+    const superficie={
+        type:'surface', x:m.x, y:m.y, z:m.z,
+        colorscale:'Portland', opacity:0.88, name:'f(x,y)', showscale:true,
+    };
+    const trazas=[superficie, ...marcadores()];
+    Plotly.react('grafica-3d', trazas, mkLayout(r), {responsive:true});
+}
+
+// Construir trazas de marcadores de cada algoritmo
+function marcadores(){
+    return Object.entries(mejores).filter(([,r])=>r).map(([alg,res])=>{
+        const e=ESTILOS[alg];
+        return {
+            type:'scatter3d', mode:'markers+text',
+            x:[res.x], y:[res.y], z:[res.valor],
+            marker:{size:10,color:e.color,symbol:e.sym},
+            text:[e.nombre], textposition:'top center',
+            textfont:{color:e.color,size:10},
+            name:e.nombre,
+        };
+    });
+}
+
+// Actualizar solo la superficie al mover sliders
+function actualizarRango(){
+    const r=getRango();
+    document.getElementById('v-xmin').textContent=r.xMin;
+    document.getElementById('v-xmax').textContent=r.xMax;
+    document.getElementById('v-ymin').textContent=r.yMin;
+    document.getElementById('v-ymax').textContent=r.yMax;
+    const m=generarMalla(r.xMin,r.xMax,r.yMin,r.yMax);
+    Plotly.restyle('grafica-3d',{x:[m.x],y:[m.y],z:[m.z]},[0]);
+}
+
+// ================================================================
+// TABLA DE RESULTADOS
+// ================================================================
+function actualizarTabla(){
+    const body=document.getElementById('tabla-body');
+    const entradas=Object.entries(mejores).filter(([,r])=>r);
+    if(!entradas.length){
+        body.innerHTML='<tr><td colspan="5" style="text-align:center;color:#a0aec0;padding:20px;">Sin resultados aún.</td></tr>';
+        return;
+    }
+    body.innerHTML=entradas.map(([alg,res])=>{
+        const e=ESTILOS[alg];
+        return `<tr>
+          <td><span class="badge badge-${alg.toLowerCase()}" style="background:${e.color};${alg==='ABC'?'color:#111':''}">${e.nombre}</span></td>
+          <td><strong style="color:${e.color}">${res.valor.toFixed(6)}</strong></td>
+          <td>${res.x.toFixed(4)}</td>
+          <td>${res.y.toFixed(4)}</td>
+          <td>${res.evaluaciones}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ================================================================
+// LANZADOR GENERAL CON ANIMACIÓN
+// ================================================================
+function lanzarCon(nombre){
+    const iter=parseInt(document.getElementById('iteraciones').value);
+    const pop =parseInt(document.getElementById('poblacion').value);
+    const r=getRango();
+    const dom={xMin:r.xMin,xMax:r.xMax,yMin:r.yMin,yMax:r.yMax};
+
+    let res;
+    if(nombre==='GA')  res=gaClasico(pop,iter,dom);
+    if(nombre==='cGA') res=cGACompacto(pop,iter,dom);
+    if(nombre==='ES')  res=esEvolutiva(pop,iter,dom);
+    if(nombre==='ABC') res=abcColmena(pop,iter,dom);
+    if(nombre==='ACO') res=acoHormigas(pop,iter,dom);
+
+    mejores[nombre]=res.resultado;
+    historialesAlgoritmos[nombre]=res.historial;
+    actualizarTabla();
+
+    // Iniciar animación
+    iniciarAnimar(nombre, res.historial);
+}
+
+function iniciarAnimar(nombre, historial){
+    animacionActual={algoritmo:nombre, historial:historial, indice:0, pausado:false};
+    mostraPanel();
+    actualizarInfo();
+    animar();
+}
+
+function mostraPanel(){
+    document.getElementById('panel-anim').style.display='block';
+}
+
+function actualizarInfo(){
+    if(!animacionActual) return;
+    const a=ESTILOS[animacionActual.algoritmo];
+    document.getElementById('info-alg').textContent=a.nombre;
+    document.getElementById('iter-act').textContent=animacionActual.indice+1;
+    document.getElementById('iter-max').textContent=animacionActual.historial.length;
+    document.getElementById('barra').style.width=(100*animacionActual.indice/animacionActual.historial.length)+'%';
+    document.getElementById('btn-play').textContent=animacionActual.pausado?'▶️ Reanudar':'⏸️ Pausar';
+}
+
+function pausarAnimar(){
+    if(!animacionActual) return;
+    animacionActual.pausado=!animacionActual.pausado;
+    actualizarInfo();
+    if(!animacionActual.pausado) animar();
+}
+
+function resetearAnimar(){
+    if(!animacionActual) return;
+    animacionActual.indice=0;
+    actualizarInfo();
+    mostrarFrame();
+}
+
+function animar(){
+    if(!animacionActual||animacionActual.pausado) return;
+
+    mostrarFrame();
+    animacionActual.indice++;
+
+    if(animacionActual.indice<animacionActual.historial.length){
+        const vel=parseInt(document.getElementById('vel-anim').value);
+        setTimeout(animar, 600-vel);
+    }else{
+        renderizar();
+    }
+}
+
+function mostrarFrame(){
+    const r=getRango();
+    const m=generarMalla(r.xMin,r.xMax,r.yMin,r.yMax);
+    const frameActual=animacionActual.historial[animacionActual.indice];
+
+    // Superficie
+    const superficie={
+        type:'surface', x:m.x, y:m.y, z:m.z,
+        colorscale:'Portland', opacity:0.85, name:'f(x,y)', showscale:false,
+    };
+
+    // Población completa (puntos pequeños semi-transparentes)
+    const poblacion={
+        type:'scatter3d', mode:'markers',
+        x:frameActual.poblacion.map(p=>p.x),
+        y:frameActual.poblacion.map(p=>p.y),
+        z:frameActual.poblacion.map(p=>p.fit),
+        marker:{
+            size:5,
+            color:frameActual.poblacion.map(p=>p.fit),
+            colorscale:'Viridis',
+            showscale:false,
+            opacity:0.6,
+            line:{color:'rgba(255,255,255,0.2)',width:0.5}
+        },
+        text:frameActual.poblacion.map((p,i)=>`Ind ${i+1}: f=${p.fit.toFixed(3)}`),
+        hoverinfo:'text',
+        name:'Población',
+    };
+
+    // Mejor solución (punto grande)
+    const mejor={
+        type:'scatter3d', mode:'markers+text',
+        x:[frameActual.mejor.x],
+        y:[frameActual.mejor.y],
+        z:[frameActual.mejor.fit],
+        marker:{size:14, color:ESTILOS[animacionActual.algoritmo].color, symbol:'star'},
+        text:[`⭐ MEJOR`],
+        textposition:'top center',
+        textfont:{color:ESTILOS[animacionActual.algoritmo].color,size:10,family:'Arial'},
+        name:'Mejor Individual',
+    };
+
+    const trazas=[superficie, poblacion, mejor];
+    Plotly.react('grafica-3d', trazas, mkLayout(r), {responsive:true});
+    actualizarInfo();
+}
+
+function limpiar(){
+    for(const k of Object.keys(mejores)) delete mejores[k];
+    actualizarTabla();
+    renderizar();
+}
+
+// ================================================================
+// ALGORITMO 1: GA CLÁSICO
+// Representación: individuo = {x, y, fitness}
+// Selección: torneo binario
+// Cruza: aritmética (blend)
+// Mutación: gaussiana con prob=0.2
+// Elitismo: el mejor pasa directo a la siguiente generación
+// ================================================================
+function gaClasico(tamPob, generaciones, dom){
+    const {xMin,xMax,yMin,yMax}=dom;
+    let evals=0;
+    const historial=[];
+
+    // Inicializar población aleatoria
+    let pob=Array.from({length:tamPob},()=>{
+        const x=xMin+Math.random()*(xMax-xMin);
+        const y=yMin+Math.random()*(yMax-yMin);
+        evals++;
+        return {x,y,fit:f(x,y)};
+    });
+
+    let mejor={...pob.reduce((a,b)=>a.fit>b.fit?a:b)};
+    historial.push({mejor:{...mejor}, poblacion:[...pob.map(p=>({...p}))]});
+
+    for(let g=0;g<generaciones;g++){
+        const nueva=[ {...mejor} ];  // Elitismo
+
+        while(nueva.length<tamPob){
+            // Selección por torneo binario
+            const p1=torneo(pob), p2=torneo(pob);
+
+            // Cruza aritmética
+            const a=Math.random();
+            let nx=clamp(a*p1.x+(1-a)*p2.x, xMin,xMax);
+            let ny=clamp(a*p1.y+(1-a)*p2.y, yMin,yMax);
+
+            // Mutación gaussiana (prob 20%)
+            if(Math.random()<0.2){
+                nx=clamp(nx+randn()*0.5, xMin,xMax);
+                ny=clamp(ny+randn()*0.5, yMin,yMax);
+            }
+            const fi=f(nx,ny); evals++;
+            nueva.push({x:nx,y:ny,fit:fi});
+        }
+        pob=nueva;
+        const mejorG=pob.reduce((a,b)=>a.fit>b.fit?a:b);
+        if(mejorG.fit>mejor.fit) mejor={...mejorG};
+        historial.push({mejor:{...mejor}, poblacion:[...pob.map(p=>({...p}))]});
+    }
+    return {resultado:{x:mejor.x,y:mejor.y,valor:mejor.fit,evaluaciones:evals}, historial};
+}
+
+function torneo(pob){
+    const a=pob[Math.floor(Math.random()*pob.length)];
+    const b=pob[Math.floor(Math.random()*pob.length)];
+    return a.fit>=b.fit?a:b;
+}
+
+// ================================================================
+// ALGORITMO 2: cGA — ALGORITMO GENÉTICO COMPACTO
+// No mantiene población explícita. Mantiene una distribución
+// normal (μ,σ) por cada variable. En cada iteración muestrea 2
+// soluciones, la ganadora "jala" la media; σ decrece gradualmente.
+// Ventaja: O(1) en memoria. Desventaja: convergencia prematura.
+// ================================================================
+function cGACompacto(tamVirtual, iteraciones, dom){
+    const {xMin,xMax,yMin,yMax}=dom;
+    let evals=0;
+    const lr=1/tamVirtual;  // Tasa de aprendizaje
+    const historial=[];
+
+    // Distribución inicial centrada en el dominio
+    let mx=(xMin+xMax)/2, sx=(xMax-xMin)/4;
+    let my=(yMin+yMax)/2, sy=(yMax-yMin)/4;
+
+    let mejorX=mx, mejorY=my, mejorF=f(mx,my); evals++;
+
+    // Muestra inicial de la distribución
+    const muestraInicial=Array.from({length:tamVirtual},()=>{
+        evals++;
+        return {x:clamp(mx+randn()*sx,xMin,xMax), y:clamp(my+randn()*sy,yMin,yMax), fit:0};
+    });
+    muestraInicial.forEach(m=>m.fit=f(m.x,m.y));
+    historial.push({mejor:{x:mejorX,y:mejorY,fit:mejorF}, poblacion:muestraInicial});
+
+    for(let i=0;i<iteraciones;i++){
+        // Muestrear dos candidatos
+        const x1=clamp(mx+randn()*sx,xMin,xMax);
+        const y1=clamp(my+randn()*sy,yMin,yMax);
+        const x2=clamp(mx+randn()*sx,xMin,xMax);
+        const y2=clamp(my+randn()*sy,yMin,yMax);
+        const f1=f(x1,y1), f2=f(x2,y2); evals+=2;
+
+        // El ganador acerca la media; el perdedor la aleja
+        const [gx,gy,px,py]= f1>=f2 ? [x1,y1,x2,y2] : [x2,y2,x1,y1];
+        mx+=lr*(gx-px);
+        my+=lr*(gy-py);
+
+        // Contracción gradual de σ (convergencia)
+        sx=Math.max(0.01, sx*0.999);
+        sy=Math.max(0.01, sy*0.999);
+
+        const fi=f1>=f2?f1:f2;
+        if(fi>mejorF){ mejorF=fi; mejorX=f1>=f2?x1:x2; mejorY=f1>=f2?y1:y2; }
+
+        // Muestra actual de la distribución
+        const muestraActual=Array.from({length:tamVirtual},()=>{
+            return {x:clamp(mx+randn()*sx,xMin,xMax), y:clamp(my+randn()*sy,yMin,yMax), fit:0};
+        });
+        muestraActual.forEach(m=>m.fit=f(m.x,m.y)); evals+=tamVirtual;
+        historial.push({mejor:{x:mejorX,y:mejorY,fit:mejorF}, poblacion:muestraActual});
+    }
+    return {resultado:{x:mejorX,y:mejorY,valor:mejorF,evaluaciones:evals}, historial};
+}
+
+// ================================================================
+// ALGORITMO 3: ESTRATEGIAS EVOLUTIVAS (μ+λ)-ES
+// Individuo = {x, y, σx, σy} — cada uno carga sus propios pasos.
+// Mutación:
+//   σ' = σ · exp(τ'·N(0,1) + τ·Ni(0,1))   (auto-adaptación)
+//   x' = x + σ'·N(0,1)
+// Selección (μ+λ): los μ mejores de padres∪hijos sobreviven.
+// La auto-adaptación de σ ajusta el tamaño de paso sin intervención.
+// ================================================================
+function esEvolutiva(mu, iteraciones, dom){
+    const {xMin,xMax,yMin,yMax}=dom;
+    const lambda=4*mu;
+    const tau =1/Math.sqrt(2*2);
+    const tauP=1/Math.sqrt(2*Math.sqrt(2));
+    let evals=0;
+    const historial=[];
+
+    // Inicializar μ padres
+    let padres=Array.from({length:mu},()=>{
+        const x=xMin+Math.random()*(xMax-xMin);
+        const y=yMin+Math.random()*(yMax-yMin);
+        evals++;
+        return {x,y,sx:(xMax-xMin)/8,sy:(yMax-yMin)/8,fit:f(x,y)};
+    });
+
+    let mejor={...padres.reduce((a,b)=>a.fit>b.fit?a:b)};
+    historial.push({mejor:{...mejor}, poblacion:[...padres.map(p=>({x:p.x,y:p.y,fit:p.fit}))]});
+
+    for(let iter=0;iter<iteraciones;iter++){
+        const hijos=[];
+
+        // Generar λ hijos por mutación
+        for(let k=0;k<lambda;k++){
+            const p=padres[Math.floor(Math.random()*padres.length)];
+
+            // Auto-adaptación de parámetros de paso
+            const sxN=p.sx*Math.exp(tau*randn()+tauP*randn());
+            const syN=p.sy*Math.exp(tau*randn()+tauP*randn());
+
+            const nx=clamp(p.x+sxN*randn(),xMin,xMax);
+            const ny=clamp(p.y+syN*randn(),yMin,yMax);
+            evals++;
+            hijos.push({x:nx,y:ny,sx:sxN,sy:syN,fit:f(nx,ny)});
+        }
+
+        // Selección (μ+λ): los μ mejores de padres+hijos
+        const pool=[...padres,...hijos].sort((a,b)=>b.fit-a.fit);
+        padres=pool.slice(0,mu);
+        if(padres[0].fit>mejor.fit) mejor={...padres[0]};
+        historial.push({mejor:{...mejor}, poblacion:[...padres.map(p=>({x:p.x,y:p.y,fit:p.fit}))]});
+    }
+    return {resultado:{x:mejor.x,y:mejor.y,valor:mejor.fit,evaluaciones:evals}, historial};
+}
+
+// ================================================================
+// ALGORITMO 4: COLMENA ABC (Artificial Bee Colony)
+// Tres fases por ciclo:
+//   Empleadas: explotan su fuente con perturbación de vecino.
+//   Seguidoras: seleccionan fuente por ruleta (calidad) y explotan.
+//   Exploradoras: abandonan fuentes estancadas (> límite intentos)
+//                 y las reemplazan con soluciones aleatorias.
+// ================================================================
+function abcColmena(tamPob, ciclos, dom){
+    const {xMin,xMax,yMin,yMax}=dom;
+    const limite=tamPob;  // Intentos máximos antes de abandonar
+    let evals=0;
+    const historial=[];
+
+    // Inicializar fuentes de alimento
+    let fuentes=Array.from({length:tamPob},()=>{
+        const x=xMin+Math.random()*(xMax-xMin);
+        const y=yMin+Math.random()*(yMax-yMin);
+        evals++;
+        return {x,y,fit:f(x,y),intentos:0};
+    });
+
+    let mejor={...fuentes.reduce((a,b)=>a.fit>b.fit?a:b)};
+    historial.push({mejor:{...mejor}, poblacion:[...fuentes.map(f=>({x:f.x,y:f.y,fit:f.fit}))]});
+
+    for(let c=0;c<ciclos;c++){
+
+        // === FASE EMPLEADAS: explotación local ===
+        for(let i=0;i<fuentes.length;i++){
+            let j=i; while(j===i) j=Math.floor(Math.random()*fuentes.length);
+            const phi=Math.random()*2-1;
+            const phiy=Math.random()*2-1;
+            const nx=clamp(fuentes[i].x+phi*(fuentes[i].x-fuentes[j].x),xMin,xMax);
+            const ny=clamp(fuentes[i].y+phiy*(fuentes[i].y-fuentes[j].y),yMin,yMax);
+            const fi=f(nx,ny); evals++;
+            if(fi>fuentes[i].fit){ fuentes[i]={x:nx,y:ny,fit:fi,intentos:0}; }
+            else{ fuentes[i].intentos++; }
+        }
+
+        // === FASE SEGUIDORAS: selección proporcional al fitness ===
+        // Se desplaza el fitness para asegurar valores positivos en ruleta
+        const minF=Math.min(...fuentes.map(fu=>fu.fit));
+        const sfits=fuentes.map(fu=>fu.fit-minF+1e-10);
+        const total=sfits.reduce((s,v)=>s+v,0);
+
+        for(let k=0;k<fuentes.length;k++){
+            // Ruleta
+            let r=Math.random()*total, i=0;
+            for(;i<fuentes.length-1;i++){ r-=sfits[i]; if(r<=0) break; }
+
+            let j=i; while(j===i) j=Math.floor(Math.random()*fuentes.length);
+            const phi=Math.random()*2-1;
+            const phiy=Math.random()*2-1;
+            const nx=clamp(fuentes[i].x+phi*(fuentes[i].x-fuentes[j].x),xMin,xMax);
+            const ny=clamp(fuentes[i].y+phiy*(fuentes[i].y-fuentes[j].y),yMin,yMax);
+            const fi=f(nx,ny); evals++;
+            if(fi>fuentes[i].fit){ fuentes[i]={x:nx,y:ny,fit:fi,intentos:0}; }
+            else{ fuentes[i].intentos++; }
+        }
+
+        // === FASE EXPLORADORAS: abandonar fuentes estancadas ===
+        for(let i=0;i<fuentes.length;i++){
+            if(fuentes[i].intentos>limite){
+                const x=xMin+Math.random()*(xMax-xMin);
+                const y=yMin+Math.random()*(yMax-yMin);
+                evals++;
+                fuentes[i]={x,y,fit:f(x,y),intentos:0};
+            }
+        }
+
+        const mejorC=fuentes.reduce((a,b)=>a.fit>b.fit?a:b);
+        if(mejorC.fit>mejor.fit) mejor={...mejorC};
+        historial.push({mejor:{...mejor}, poblacion:[...fuentes.map(f=>({x:f.x,y:f.y,fit:f.fit}))]});
+    }
+    return {resultado:{x:mejor.x,y:mejor.y,valor:mejor.fit,evaluaciones:evals}, historial};
+}
+
+// ================================================================
+// ALGORITMO 5: HORMIGAS ACO CONTINUO
+// Adaptación de ACO a espacio continuo 2D mediante cuadrícula N×N:
+//   τ(i,j) = feromonas en celda (i,j), inicializadas uniformes.
+//   η(i,j) = heurística = f normalizado a [0.01,1].
+//   Cada hormiga elige celda con p(i,j) ∝ τ^α · η^β (ruleta).
+//   Dentro de la celda agrega perturbación aleatoria continua.
+//   Actualización: evaporación global + depósito proporcional a calidad.
+// ================================================================
+function acoHormigas(numHormigas, iteraciones, dom){
+    const {xMin,xMax,yMin,yMax}=dom;
+    const N=20;           // Resolución de la cuadrícula (N×N)
+    const alpha=1.0;      // Peso de feromonas
+    const beta=2.0;       // Peso de heurística
+    const rho=0.1;        // Tasa de evaporación
+    const Q=1.0;          // Constante de depósito
+    let evals=0;
+    const historial=[];
+
+    const wc=(xMax-xMin)/N, hc=(yMax-yMin)/N;  // Ancho/alto de celda
+
+    // Pre-calcular centros y heurística η para cada celda
+    const cx=[], cy=[], eta=[];
+    let maxF=-Infinity, minF=Infinity;
+    for(let i=0;i<N;i++){
+        cx.push([]); cy.push([]); eta.push([]);
+        for(let j=0;j<N;j++){
+            const xi=xMin+(i+0.5)*wc, yj=yMin+(j+0.5)*hc;
+            cx[i].push(xi); cy[i].push(yj);
+            const v=f(xi,yj); evals++;
+            eta[i].push(v);
+            if(v>maxF) maxF=v; if(v<minF) minF=v;
+        }
+    }
+    // Normalizar η a [0.01, 1]
+    const rng=maxF-minF||1;
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++)
+        eta[i][j]=((eta[i][j]-minF)/rng)*0.99+0.01;
+
+    // Inicializar feromonas uniformes
+    const tau=Array.from({length:N},()=>Array(N).fill(1.0));
+
+    let mejor={x:cx[0][0],y:cy[0][0],valor:-Infinity,fit:-Infinity};
+    const pobInicial=Array.from({length:numHormigas},()=>({x:xMin+Math.random()*(xMax-xMin),y:yMin+Math.random()*(yMax-yMin),fit:0}));
+    pobInicial.forEach(p=>p.fit=f(p.x,p.y)); evals+=numHormigas;
+    historial.push({mejor:{x:mejor.x,y:mejor.y,fit:mejor.valor}, poblacion:pobInicial});
+
+    for(let iter=0;iter<iteraciones;iter++){
+        const sols=[];
+
+        // Pre-computar pesos de selección (τ^α · η^β)
+        const pesos=[];
+        let sumP=0;
+        for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+            const w=Math.pow(tau[i][j],alpha)*Math.pow(eta[i][j],beta);
+            pesos.push({i,j,w}); sumP+=w;
+        }
+
+        // Cada hormiga selecciona una celda y genera solución continua
+        for(let k=0;k<numHormigas;k++){
+            let r=Math.random()*sumP, eli=pesos[pesos.length-1];
+            for(const p of pesos){ r-=p.w; if(r<=0){eli=p;break;} }
+
+            // Perturbación aleatoria dentro de la celda elegida
+            const nx=clamp(cx[eli.i][eli.j]+(Math.random()-0.5)*wc, xMin,xMax);
+            const ny=clamp(cy[eli.i][eli.j]+(Math.random()-0.5)*hc, yMin,yMax);
+            const fv=f(nx,ny); evals++;
+            sols.push({x:nx,y:ny,v:fv,fit:fv,i:eli.i,j:eli.j});
+            if(fv>mejor.valor) mejor={x:nx,y:ny,valor:fv,fit:fv};
+        }
+
+        // Evaporación global
+        for(let i=0;i<N;i++) for(let j=0;j<N;j++) tau[i][j]*=(1-rho);
+
+        // Depósito de feromonas proporcional a calidad normalizada
+        const vmin=Math.min(...sols.map(s=>s.v));
+        const vmax=Math.max(...sols.map(s=>s.v));
+        const vr=vmax-vmin||1;
+        for(const s of sols) tau[s.i][s.j]+=Q*((s.v-vmin)/vr+0.01);
+
+        historial.push({mejor:{x:mejor.x,y:mejor.y,fit:mejor.fit}, poblacion:[...sols.map(s=>({x:s.x,y:s.y,fit:s.fit}))]});
+    }
+    return {resultado:{x:mejor.x,y:mejor.y,valor:mejor.valor,evaluaciones:evals}, historial};
+}
+
+// ================================================================
+// INICIALIZACIÓN
+// ================================================================
+window.addEventListener('load', async ()=>{
+    renderizar();
+    actualizarTabla();
+    // Esperar a que MathJax renderice las ecuaciones
+    if(typeof MathJax !== 'undefined') {
+        await MathJax.typesetPromise();
+    }
+});
+</script>
+</body>
+</html>
